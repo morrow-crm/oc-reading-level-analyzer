@@ -1,0 +1,19 @@
+# OS clutter
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Editor and IDE folders
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# Logs and temp files
+*.log
+*.tmp

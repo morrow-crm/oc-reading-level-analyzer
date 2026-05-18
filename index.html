@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OC Reading Level Analyzer — web</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#f7f7f8;
+    --panel-blue:#eef2f7;
+    --border:#d4d4d8;
+    --border-strong:#b9b9bd;
+    --ink:#1f1f22;
+    --ink-soft:#6a6a6e;
+    --ink-faint:#8d8d92;
+    --blue:#2f6fb5;
+    --blue-dark:#245a93;
+    --navy:#243f63;
+    --yellow-bg:#faf3cd;
+    --yellow-bd:#e6d98f;
+    --yellow-ink:#6a5910;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:30px 20px 70px;
+  }
+  .wrap{max-width:940px;margin:0 auto;}
+  .mono{
+    font-family:Consolas,"Cascadia Mono",Menlo,monospace;
+    font-size:0.86em;background:#ececec;color:#333;
+    padding:1px 5px;border-radius:3px;
+  }
+
+  /* ---- header ---- */
+  header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:6px;}
+  h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.01em;}
+  .sub{color:var(--ink-soft);font-size:0.92rem;margin-top:4px;max-width:60em;}
+
+  /* ---- banners ---- */
+  .banner-navy{
+    background:var(--navy);color:#fff;font-weight:500;
+    padding:11px 16px;border-radius:4px;font-size:0.95rem;margin-top:18px;
+  }
+  .banner-yellow{
+    background:var(--yellow-bg);border:1px solid var(--yellow-bd);
+    color:var(--yellow-ink);padding:11px 16px;border-radius:4px;
+    font-size:0.95rem;margin-top:18px;
+  }
+
+  /* ---- sections ---- */
+  .section{
+    border:1px solid var(--border);background:var(--panel);
+    border-radius:5px;padding:18px 20px;margin-top:18px;
+  }
+  .section h2{
+    font-size:1.05rem;font-weight:700;margin-bottom:14px;
+  }
+  .section h2 .tri{color:var(--ink-soft);font-size:0.8em;margin-right:4px;}
+  .section h2 .hint{
+    font-weight:400;color:var(--ink-soft);font-size:0.85rem;
+  }
+
+  textarea{
+    width:100%;min-height:180px;resize:vertical;
+    background:#fff;border:1px solid var(--border-strong);border-radius:4px;
+    padding:12px 14px;
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:0.95rem;line-height:1.55;color:var(--ink);
+  }
+  textarea:focus{outline:2px solid var(--blue);outline-offset:-1px;}
+
+  .dropzone{
+    margin-top:10px;border:1.5px dashed var(--border-strong);
+    background:#fff;border-radius:4px;text-align:center;
+    padding:14px;font-size:0.9rem;color:var(--ink-soft);cursor:pointer;
+    transition:background .12s,border-color .12s;
+  }
+  .dropzone:hover,.dropzone.over{background:var(--panel-blue);border-color:var(--blue);color:var(--ink);}
+
+  .actionrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;}
+  button{
+    font-family:inherit;font-size:0.86rem;cursor:pointer;
+    border-radius:4px;padding:8px 16px;transition:background .12s;
+  }
+  button.primary{background:var(--blue);color:#fff;border:1px solid var(--blue-dark);}
+  button.primary:hover{background:var(--blue-dark);}
+  button.secondary{background:#e9e9ea;color:var(--ink);border:1px solid #adadb2;}
+  button.secondary:hover{background:#dededf;}
+  #status{font-size:0.84rem;color:var(--ink-soft);flex:1;min-width:120px;}
+
+  /* ---- results ---- */
+  #results[hidden]{display:none;}
+  .reveal{opacity:0;animation:fade .4s ease forwards;}
+  @keyframes fade{to{opacity:1;}}
+
+  .headline-panel{
+    background:var(--panel-blue);border:1px solid #cdd7e3;border-radius:5px;
+    padding:22px 18px;text-align:center;
+  }
+  .headline-label{
+    font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;
+    color:var(--ink-soft);font-weight:600;
+  }
+  .headline-num{
+    font-size:3.4rem;font-weight:700;line-height:1.05;
+    color:var(--blue);margin:4px 0 2px;
+  }
+  .headline-band{font-size:1.12rem;font-weight:600;color:var(--ink);}
+  .headline-range{
+    font-family:Consolas,Menlo,monospace;font-size:0.78rem;
+    color:var(--ink-soft);margin-top:8px;
+  }
+
+  .subhead{
+    font-weight:700;font-size:0.95rem;margin:22px 0 8px;
+    padding-bottom:5px;border-bottom:1px solid var(--border);
+  }
+  table.data{width:100%;border-collapse:collapse;border:1px solid var(--border);}
+  table.data th{
+    background:#ececef;text-align:left;font-weight:600;
+    font-size:0.78rem;letter-spacing:0.02em;text-transform:uppercase;
+    color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--border);
+  }
+  table.data td{
+    padding:9px 10px;border-bottom:1px solid #e6e6e9;font-size:0.92rem;
+    vertical-align:baseline;
+  }
+  table.data tr:last-child td{border-bottom:none;}
+  .r{text-align:right;}
+  td.fn{font-weight:600;white-space:nowrap;}
+  td.fd{color:var(--ink-soft);font-size:0.86rem;}
+  td.score{
+    font-family:Consolas,Menlo,monospace;font-weight:600;
+    color:var(--blue);white-space:nowrap;
+  }
+  td.fb{color:var(--ink-soft);white-space:nowrap;font-size:0.88rem;}
+
+  .statgrid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+    border:1px solid var(--border);border-radius:4px;overflow:hidden;
+  }
+  .stat{
+    padding:12px 10px;text-align:center;background:#fff;
+    border-right:1px solid #e6e6e9;
+  }
+  .stat:last-child{border-right:none;}
+  .snum{
+    font-family:Consolas,Menlo,monospace;font-weight:600;
+    font-size:1.3rem;color:var(--ink);
+  }
+  .scap{
+    font-size:0.66rem;letter-spacing:0.04em;text-transform:uppercase;
+    color:var(--ink-soft);margin-top:3px;
+  }
+
+  /* ---- footer ---- */
+  footer{
+    margin-top:30px;border-top:1px solid var(--border);
+    padding-top:14px;font-size:0.83rem;color:var(--ink-soft);
+  }
+  footer a{color:var(--blue);}
+  footer .links{margin-bottom:8px;}
+  footer .links a{margin-right:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>OC Reading Level Analyzer — web</h1>
+    <p class="sub">Local browser variant. Paste or upload a reading to estimate its level across eight readability formulas. All analysis runs in your browser — nothing is uploaded or stored. Phase one of the reading fluency tool.</p>
+  </header>
+
+  <div class="banner-yellow" id="emptyBanner">No reading analyzed yet. Paste a passage or upload a file below to estimate its reading level.</div>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 1. Add a reading <span class="hint">(paste the text below, or upload a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span> file)</span></h2>
+    <textarea id="text" placeholder="Paste the text of a reading here…"></textarea>
+    <div class="dropzone" id="drop">Drop a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span> file here, or click to browse</div>
+    <input type="file" id="file" accept=".txt,.docx,.pdf" hidden>
+    <div class="actionrow">
+      <button id="analyze" class="primary">Analyze reading</button>
+      <button id="sample" class="secondary">Load sample</button>
+      <button id="clear" class="secondary">Clear</button>
+      <span id="status"></span>
+    </div>
+  </section>
+
+  <section id="results" hidden></section>
+
+  <footer>
+    <div class="links">
+      <a href="#" onclick="return false">How the levels are estimated</a>
+      <a href="#" onclick="return false">About readability formulas</a>
+    </div>
+    <p>These formulas estimate difficulty from surface features — sentence length, word length, and syllable counts — not concept load or background-knowledge demands. A passage of short words and short sentences about an abstract idea will still score &ldquo;easy.&rdquo; Reading eight formulas together gives a sensible range rather than false precision. <span class="mono">Lexile</span> is proprietary and cannot be computed from an open formula, so it is not included. Dale&ndash;Chall and Spache are omitted because they depend on word-familiarity lists. Syllable counts use a standard heuristic and are approximate.</p>
+  </footer>
+
+</div>
+
+<script>
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const $=id=>document.getElementById(id);
+const textEl=$('text'), statusEl=$('status'), resultsEl=$('results'), emptyEl=$('emptyBanner');
+
+/* ---------- text analysis ---------- */
+function countSyllables(word){
+  word=word.toLowerCase().replace(/[^a-z]/g,'');
+  if(!word) return 0;
+  if(word.length<=3) return 1;
+  let w=word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/,'');
+  w=w.replace(/^y/,'');
+  const g=w.match(/[aeiouy]{1,2}/g);
+  return Math.max(1,g?g.length:1);
+}
+function getStats(text){
+  const sentArr=(text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[])
+    .map(s=>s.trim()).filter(s=>/[A-Za-z0-9]/.test(s));
+  const wordArr=(text.toLowerCase().match(/[a-z]+(?:['’\-][a-z]+)*/g)||[]);
+  let syll=0,letters=0,complex=0,mono=0;
+  for(const w of wordArr){
+    const s=countSyllables(w);
+    syll+=s;
+    letters+=w.replace(/[^a-z]/g,'').length;
+    if(s>=3) complex++;
+    if(s===1) mono++;
+  }
+  return {
+    rawSentences:sentArr.length,
+    sentences:Math.max(1,sentArr.length),
+    words:wordArr.length,
+    syllables:syll, letters:letters, complex:complex, mono:mono
+  };
+}
+function gradeBand(g){
+  if(g<1) return 'Kindergarten';
+  if(g<6) return 'Elementary (grades 1–5)';
+  if(g<9) return 'Middle school (6–8)';
+  if(g<13) return 'High school (9–12)';
+  if(g<17) return 'College (13–16)';
+  return 'Graduate level';
+}
+function freBand(s){
+  if(s>=90) return 'Very easy';
+  if(s>=80) return 'Easy';
+  if(s>=70) return 'Fairly easy';
+  if(s>=60) return 'Plain English';
+  if(s>=50) return 'Fairly difficult';
+  if(s>=30) return 'Difficult';
+  return 'Very difficult';
+}
+const g0=x=>Math.max(0,x);
+const median=a=>{const b=[...a].sort((x,y)=>x-y);const m=b.length>>1;
+  return b.length%2?b[m]:(b[m-1]+b[m])/2;};
+
+/* ---------- compute & render ---------- */
+function analyze(){
+  const text=textEl.value.trim();
+  if(text.length<20){statusEl.textContent='Add a longer passage to analyze.';return;}
+  const s=getStats(text);
+  if(s.words<10){statusEl.textContent='Not enough words to analyze.';return;}
+
+  const W=s.words,S=s.sentences,Sy=s.syllables,L=s.letters,C=s.complex,M=s.mono;
+  const wps=W/S, spw=Sy/W;
+
+  const FRE = 206.835 - 1.015*wps - 84.6*spw;
+  const FK  = 0.39*wps + 11.8*spw - 15.59;
+  const FOG = 0.4*(wps + 100*(C/W));
+  const SMOG= 1.0430*Math.sqrt(C*(30/S)) + 3.1291;
+  const CLI = 0.0588*(L/W*100) - 0.296*(S/W*100) - 15.8;
+  const ARI = 4.71*(L/W) + 0.5*wps - 21.43;
+  const prov=((W-C)*1 + C*3)/S;
+  const LIN = prov>20 ? prov/2 : (prov-2)/2;
+  const FORC= 20 - ((M/W*150)/10);
+
+  const rows=[
+    ['Flesch–Kincaid Grade','Word and sentence length',g0(FK),'grade'],
+    ['Gunning Fog Index','Sentence length plus 3+ syllable words',g0(FOG),'grade'],
+    ['SMOG Index','Density of polysyllabic words',g0(SMOG),'grade'],
+    ['Coleman–Liau Index','Letters per word, sentences per word',g0(CLI),'grade'],
+    ['Automated Readability Index','Characters per word, words per sentence',g0(ARI),'grade'],
+    ['Linsear Write','Ratio of easy to hard words',g0(LIN),'grade'],
+    ['FORCAST','Share of single-syllable words',g0(FORC),'grade'],
+    ['Flesch Reading Ease','0–100 scale; higher is easier',FRE,'ease']
+  ];
+
+  const grades=[FK,FOG,SMOG,CLI,ARI,LIN,FORC].map(g0);
+  const con=median(grades);
+  const lo=Math.min(...grades), hi=Math.max(...grades);
+
+  let html='<div class="banner-navy reveal">Analyzed '+W.toLocaleString()+' words across '
+    +s.rawSentences+' sentence'+(s.rawSentences===1?'':'s')
+    +'. Consensus reading level: grade '+con.toFixed(1)+'.</div>';
+
+  html+='<div class="section reveal" style="animation-delay:.06s">';
+  html+='<h2><span class="tri">▾</span> 2. Reading level <span class="hint">(estimated from eight readability formulas)</span></h2>';
+
+  html+='<div class="headline-panel">'
+    +'<div class="headline-label">Consensus reading level</div>'
+    +'<div class="headline-num">'+con.toFixed(1)+'</div>'
+    +'<div class="headline-band">'+gradeBand(con)+'</div>'
+    +'<div class="headline-range">U.S. grade equivalent &middot; range across formulas '
+      +lo.toFixed(1)+'–'+hi.toFixed(1)+'</div>'
+    +'</div>';
+
+  html+='<div class="subhead">Formula by formula</div>';
+  html+='<table class="data"><thead><tr><th>Formula</th><th>What it weighs</th>'
+    +'<th class="r">Score</th><th class="r">Reading level</th></tr></thead><tbody>';
+  for(const [name,desc,val,kind] of rows){
+    const score=kind==='ease'?val.toFixed(1):val.toFixed(1);
+    const band =kind==='ease'?freBand(val):gradeBand(val).replace(/ \(.*\)/,'');
+    html+='<tr><td class="fn">'+name+'</td><td class="fd">'+desc+'</td>'
+      +'<td class="r score">'+score+'</td><td class="r fb">'+band+'</td></tr>';
+  }
+  html+='</tbody></table>';
+
+  html+='<div class="subhead">Underlying text statistics</div>';
+  html+='<div class="statgrid">'
+    +stat(W.toLocaleString(),'words')
+    +stat(s.rawSentences,'sentences')
+    +stat(wps.toFixed(1),'words / sentence')
+    +stat(spw.toFixed(2),'syllables / word')
+    +stat((C/W*100).toFixed(0)+'%','complex words')
+    +'</div>';
+
+  if(s.words<100 || s.rawSentences<30){
+    html+='<div class="banner-yellow" style="margin-top:14px">This passage is short. '
+      +'Readability formulas are most reliable on samples of at least 100 words, and SMOG '
+      +'is calibrated for 30 or more sentences. Treat these numbers as rough for short excerpts.</div>';
+  }
+  html+='</div>';
+
+  resultsEl.innerHTML=html;
+  resultsEl.hidden=false;
+  emptyEl.hidden=true;
+  statusEl.textContent='Analyzed '+W.toLocaleString()+' words.';
+  resultsEl.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function stat(n,cap){
+  return '<div class="stat"><div class="snum">'+n+'</div><div class="scap">'+cap+'</div></div>';
+}
+
+/* ---------- file handling ---------- */
+async function readFile(file){
+  const name=file.name.toLowerCase();
+  statusEl.textContent='Reading '+file.name+'…';
+  try{
+    if(name.endsWith('.txt')){
+      textEl.value=await file.text();
+    }else if(name.endsWith('.docx')){
+      if(!window.mammoth) throw new Error('docx reader unavailable');
+      const buf=await file.arrayBuffer();
+      const res=await mammoth.extractRawText({arrayBuffer:buf});
+      textEl.value=res.value;
+    }else if(name.endsWith('.pdf')){
+      if(!window.pdfjsLib) throw new Error('pdf reader unavailable');
+      const buf=await file.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+      let out='';
+      for(let p=1;p<=pdf.numPages;p++){
+        const page=await pdf.getPage(p);
+        const tc=await page.getTextContent();
+        out+=tc.items.map(i=>i.str).join(' ')+'\n\n';
+      }
+      textEl.value=out;
+    }else{
+      statusEl.textContent='Unsupported file type. Use .txt, .docx, or .pdf.';
+      return;
+    }
+    statusEl.textContent='Loaded '+file.name+'. Ready to analyze.';
+  }catch(e){
+    statusEl.textContent='Could not read that file ('+e.message+'). Try pasting the text instead.';
+  }
+}
+
+/* ---------- wiring ---------- */
+$('analyze').addEventListener('click',analyze);
+$('clear').addEventListener('click',()=>{
+  textEl.value='';resultsEl.hidden=true;emptyEl.hidden=false;
+  statusEl.textContent='';textEl.focus();
+});
+$('sample').addEventListener('click',()=>{
+  textEl.value="The river had a way of keeping its own counsel. In the months after the mill closed, the townspeople still walked down to the bank in the evenings, as if the water might announce something, but it only moved past them the way it always had. Younger residents found this frustrating. They wanted a verdict. The older ones, who had learned long ago that a place does not explain itself on demand, simply watched the light come apart on the surface and then went home to supper, carrying the unanswered question with them like a stone in a coat pocket.";
+  statusEl.textContent='Sample passage loaded.';
+});
+
+const drop=$('drop'), fileInput=$('file');
+drop.addEventListener('click',()=>fileInput.click());
+fileInput.addEventListener('change',e=>{if(e.target.files[0]) readFile(e.target.files[0]);});
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{
+  e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{
+  e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{
+  if(e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);});
+</script>
+</body>
+</html>
