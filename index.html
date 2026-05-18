@@ -213,6 +213,7 @@ if(window.pdfjsLib){
 
 const $=id=>document.getElementById(id);
 const textEl=$('text'), statusEl=$('status'), resultsEl=$('results'), emptyEl=$('emptyBanner');
+let loadedFilename='', lastConsensus=null, lastText='';
 
 /* ---------- text analysis ---------- */
 function countSyllables(word){
@@ -339,13 +340,39 @@ function analyze(){
       +'Readability formulas are most reliable on samples of at least 100 words, and SMOG '
       +'is calibrated for 30 or more sentences. Treat these numbers as rough for short excerpts.</div>';
   }
+  html+='<div class="actionrow"><button id="export" class="primary">Export reading for students</button></div>';
   html+='</div>';
 
+  lastConsensus=con;
+  lastText=text;
   resultsEl.innerHTML=html;
   resultsEl.hidden=false;
   emptyEl.hidden=true;
   statusEl.textContent='Analyzed '+W.toLocaleString()+' words.';
+  $('export').addEventListener('click',exportReading);
   resultsEl.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function exportReading(){
+  if(lastConsensus===null) return;
+  const suggested=loadedFilename.replace(/\.[^.]+$/,'');
+  const title=(window.prompt('Title for this reading:',suggested)||'').trim();
+  if(!title){statusEl.textContent='Export cancelled — a title is required.';return;}
+  const paragraphs=lastText.split(/\n\s*\n+/).map(p=>p.replace(/\s+/g,' ').trim()).filter(p=>p.length);
+  const data={
+    title:title,
+    readingLevel:lastConsensus.toFixed(1),
+    levelDescription:'',
+    paragraphs:paragraphs
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const safeName=title.replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim()||'reading';
+  const a=document.createElement('a');
+  a.href=url; a.download=safeName+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+  statusEl.textContent='Exported '+safeName+'.json';
 }
 function stat(n,cap){
   return '<div class="stat"><div class="snum">'+n+'</div><div class="scap">'+cap+'</div></div>';
@@ -355,6 +382,7 @@ function stat(n,cap){
 async function readFile(file){
   const name=file.name.toLowerCase();
   statusEl.textContent='Reading '+file.name+'…';
+  loadedFilename=file.name;
   try{
     if(name.endsWith('.txt')){
       textEl.value=await file.text();
@@ -388,9 +416,10 @@ async function readFile(file){
 $('analyze').addEventListener('click',analyze);
 $('clear').addEventListener('click',()=>{
   textEl.value='';resultsEl.hidden=true;emptyEl.hidden=false;
-  statusEl.textContent='';textEl.focus();
+  statusEl.textContent='';loadedFilename='';lastConsensus=null;lastText='';textEl.focus();
 });
 $('sample').addEventListener('click',()=>{
+  loadedFilename='';
   textEl.value="The river had a way of keeping its own counsel. In the months after the mill closed, the townspeople still walked down to the bank in the evenings, as if the water might announce something, but it only moved past them the way it always had. Younger residents found this frustrating. They wanted a verdict. The older ones, who had learned long ago that a place does not explain itself on demand, simply watched the light come apart on the surface and then went home to supper, carrying the unanswered question with them like a stone in a coat pocket.";
   statusEl.textContent='Sample passage loaded.';
 });
