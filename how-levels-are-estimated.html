@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Reading Levels Are Estimated — OC Reading Level Analyzer</title>
+<style>
+  :root{
+    --bg:#ffffff;
+    --panel:#f7f7f8;
+    --panel-blue:#eef2f7;
+    --border:#d4d4d8;
+    --border-strong:#b9b9bd;
+    --ink:#1f1f22;
+    --ink-soft:#6a6a6e;
+    --ink-faint:#8d8d92;
+    --blue:#2f6fb5;
+    --blue-dark:#245a93;
+    --navy:#243f63;
+    --yellow-bg:#faf3cd;
+    --yellow-bd:#e6d98f;
+    --yellow-ink:#6a5910;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:30px 20px 70px;
+  }
+  .wrap{max-width:940px;margin:0 auto;}
+  .mono{
+    font-family:Consolas,"Cascadia Mono",Menlo,monospace;
+    font-size:0.86em;background:#ececec;color:#333;
+    padding:1px 5px;border-radius:3px;
+  }
+  a{color:var(--blue);}
+
+  /* ---- back link ---- */
+  .backlink{
+    font-size:0.86rem;margin-bottom:12px;
+  }
+  .backlink a{text-decoration:none;}
+  .backlink a:hover{text-decoration:underline;}
+
+  /* ---- header ---- */
+  header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:6px;}
+  h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.01em;}
+  .sub{color:var(--ink-soft);font-size:0.92rem;margin-top:4px;max-width:60em;}
+
+  /* ---- sections ---- */
+  .section{
+    border:1px solid var(--border);background:var(--panel);
+    border-radius:5px;padding:18px 20px;margin-top:18px;
+  }
+  .section h2{
+    font-size:1.05rem;font-weight:700;margin-bottom:10px;
+  }
+  .section h2 .tri{color:var(--ink-soft);font-size:0.8em;margin-right:4px;}
+  .section h2 .hint{
+    font-weight:400;color:var(--ink-soft);font-size:0.85rem;
+  }
+
+  /* ---- prose ---- */
+  .prose p{margin-top:12px;max-width:62em;}
+  .prose p:first-child{margin-top:0;}
+  .prose h3{
+    font-size:0.98rem;font-weight:700;margin:18px 0 6px;
+    padding-bottom:4px;border-bottom:1px solid var(--border);
+  }
+  .prose h3:first-child{margin-top:6px;}
+
+  /* ---- footer ---- */
+  footer{
+    margin-top:30px;border-top:1px solid var(--border);
+    padding-top:14px;font-size:0.83rem;color:var(--ink-soft);
+  }
+  footer a{color:var(--blue);}
+  footer .links{margin-bottom:8px;}
+  footer .links a{margin-right:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="backlink"><a href="index.html">← Back to the analyzer</a></p>
+
+  <header>
+    <h1>How Reading Levels Are Estimated</h1>
+    <p class="sub">A short guide to the eight readability formulas this tool uses, what they measure, and how the consensus reading level is calculated.</p>
+  </header>
+
+  <section class="section">
+    <div class="prose">
+      <p>This tool estimates the reading level of a text using eight readability formulas developed over the past seventy years. Each formula produces a number. The tool reports the consensus among them, along with the range, so you can see both a central estimate and how much the formulas disagree.</p>
+      <p>No single formula is authoritative. They were built for different purposes and weigh the features of a text differently, so reading several together gives a more honest picture than relying on one.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 1. What the formulas actually measure <span class="hint">(surface features, not meaning)</span></h2>
+    <div class="prose">
+      <p>Readability formulas are simpler than they may appear. They do not read for meaning. Instead, they count surface features of a text and use those counts to predict difficulty. The features come down to two ideas: sentence length and word length. Longer sentences are harder to hold in working memory. Longer words, measured either in syllables or in letters, tend to be rarer and more abstract. A few formulas also factor in how many words are short and common versus long and unusual.</p>
+      <p>Because the formulas only count surface features, they miss a great deal. A passage can use short words and short sentences and still be difficult if the ideas are abstract, if the argument is dense, or if the reader lacks the background knowledge the text assumes. The reverse happens too: a vivid narrative with some long sentences may read more easily than its score suggests. Treat the estimate as a useful starting point for judgment, not a substitute for it.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 2. The eight formulas <span class="hint">(seven grade-level scores plus Flesch Reading Ease)</span></h2>
+    <div class="prose">
+      <h3>Flesch Reading Ease</h3>
+      <p>One of the oldest and most widely used measures, published by Rudolf Flesch in 1948. It rates a text on a scale from 0 to 100, where higher numbers mean easier reading. The score depends on average sentence length and the average number of syllables per word. A score in the 60 to 70 range is generally considered plain English suitable for most adult readers. This is the one formula here that does not produce a grade level, so it is reported on its own rather than folded into the consensus.</p>
+
+      <h3>Flesch–Kincaid Grade Level</h3>
+      <p>A reworking of Flesch's formula carried out for the U.S. Navy in 1975 by J. Peter Kincaid and colleagues. It uses the same two inputs, sentence length and syllables per word, but expresses the result as a U.S. school grade. A score of 9.0 means the text is pitched at a ninth-grade reading level. It is probably the most commonly cited readability number, partly because it has long been built into word processors.</p>
+
+      <h3>Gunning Fog Index</h3>
+      <p>Developed by the business writing consultant Robert Gunning in 1952. It estimates the years of formal education a reader needs to follow a text on the first reading. The calculation combines average sentence length with the proportion of complex words, meaning words of three or more syllables. The name reflects Gunning's view that overcomplicated prose creates a kind of fog between the writer and the reader.</p>
+
+      <h3>SMOG Index</h3>
+      <p>SMOG stands for Simple Measure of Gobbledygook, named with deliberate humor by G. Harry McLaughlin, who published it in 1969. It estimates grade level from the number of words with three or more syllables across a sample of sentences. SMOG is widely used to check health and medical materials, where misjudging difficulty has real consequences. It is calibrated for samples of about thirty sentences, so its estimate is less reliable on very short passages.</p>
+
+      <h3>Coleman–Liau Index</h3>
+      <p>Published by Meri Coleman and T. L. Liau in 1975. It is unusual because it ignores syllables entirely and works from letters instead, using the average number of letters per word and sentences per word. The designers wanted a formula a computer could calculate without the difficult step of counting syllables, which even now is done only by approximation.</p>
+
+      <h3>Automated Readability Index</h3>
+      <p>Created in 1967 by researchers working for the U.S. Air Force. Like the Coleman–Liau Index, it relies on characters per word rather than syllables, combined with words per sentence, and returns a U.S. grade level. It was designed from the start to be calculated automatically, which is how it got its name.</p>
+
+      <h3>Linsear Write</h3>
+      <p>A formula developed for the U.S. Air Force to evaluate the readability of technical manuals. It sorts the words in a sample into easy words of one or two syllables and hard words of three or more, weights the hard words more heavily, and divides by the number of sentences to arrive at a grade level. It pays particular attention to the balance between plain and demanding vocabulary.</p>
+
+      <h3>FORCAST</h3>
+      <p>Also developed for the U.S. military in the 1970s, FORCAST is the odd one out. It estimates grade level from the number of single-syllable words in a sample and does not use sentence length at all. Because it does not depend on sentences, it can assess material that is not written in continuous prose, such as forms, tests, and lists. For ordinary passages it serves as a useful cross-check against the sentence-based formulas.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 3. How the consensus is calculated <span class="hint">(median of the seven grade-level formulas)</span></h2>
+    <div class="prose">
+      <p>Seven of the eight formulas report a U.S. grade level. The tool takes the median of those seven, which is the middle value when they are sorted in order. The median is used rather than the average because it is less affected by a single formula that produces an unusually high or low number.</p>
+      <p>Alongside the consensus, the tool shows the full range from the lowest to the highest grade-level estimate. A narrow range means the formulas agree and you can be fairly confident in the result. A wide range is a signal to read the passage yourself before drawing conclusions.</p>
+      <p>Flesch Reading Ease is kept separate from the consensus because it reports an ease score rather than a grade.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 4. The text statistics <span class="hint">(the raw counts behind the scores)</span></h2>
+    <div class="prose">
+      <p>The tool also reports the raw counts the formulas are built from: the number of words and sentences, the average words per sentence, the average syllables per word, and the share of complex words. These are worth a look. They show, in plain terms, what is driving the score. If a passage scores as difficult, the statistics will usually reveal whether long sentences, long words, or both are the cause.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 5. What is not included <span class="hint">(Lexile, Dale–Chall, Spache)</span></h2>
+    <div class="prose">
+      <p><span class="mono">Lexile</span> measures are not part of this tool. The Lexile Framework is a proprietary system owned by its developer, and there is no open formula that reproduces an official Lexile score. Any tool that reports a Lexile number without a license is offering an approximation, and this tool does not claim to do so.</p>
+      <p>Two further formulas, the Dale–Chall Readability Formula and the Spache Readability Formula, are also left out. Both depend on lists of words considered familiar to readers, and applying them well requires maintaining and validating those lists. They may be added in a later version.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 6. A note on syllable counting <span class="hint">(a heuristic, not a dictionary)</span></h2>
+    <div class="prose">
+      <p>Several of these formulas depend on counting syllables, and English syllable counting cannot be done perfectly by a simple rule. The tool uses a standard heuristic that is accurate for most words but will misjudge some, particularly unusual names and irregular spellings. For passages of normal length the small errors average out and have little effect on the result. For very short passages they matter more, which is one more reason to treat short-sample scores with caution.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2><span class="tri">▾</span> 7. In short <span class="hint">(a useful first estimate, not a verdict)</span></h2>
+    <div class="prose">
+      <p>Used with these limits in mind, the formulas are genuinely useful. They give a quick and consistent first estimate of how demanding a text is, which is a sound basis for choosing readings and for noticing when a passage may be harder than intended. The final judgment belongs to the instructor, who knows the students and the purpose of the assignment.</p>
+    </div>
+  </section>
+
+  <p class="backlink" style="margin-top:22px"><a href="index.html">← Back to the analyzer</a></p>
+
+  <footer>
+    <p>Phase 1 of a reading fluency tool for Olympic College. All analysis runs in your browser — nothing is uploaded or stored.</p>
+  </footer>
+
+</div>
+</body>
+</html>
