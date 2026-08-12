@@ -77,6 +77,11 @@
   }
   textarea:focus{outline:2px solid var(--blue);outline-offset:-1px;}
 
+  .export-fields{margin-top:16px;}
+  .export-q-label{display:block;font-weight:700;font-size:0.9rem;margin-bottom:6px;}
+  .export-q-label .hint{font-weight:400;color:var(--ink-soft);font-size:0.82rem;}
+  #export-questions{min-height:96px;}
+
   .dropzone{
     margin-top:10px;border:1.5px dashed var(--border-strong);
     background:#fff;border-radius:4px;text-align:center;
@@ -340,6 +345,11 @@ function analyze(){
       +'Readability formulas are most reliable on samples of at least 100 words, and SMOG '
       +'is calibrated for 30 or more sentences. Treat these numbers as rough for short excerpts.</div>';
   }
+  html+='<div class="export-fields">'
+    +'<label class="export-q-label" for="export-questions">Comprehension questions '
+    +'<span class="hint">(optional — one per line, up to four; they travel inside the reading file and show up in the student&rsquo;s reading record)</span></label>'
+    +'<textarea id="export-questions" placeholder="One comprehension question per line (optional)&hellip;"></textarea>'
+    +'</div>';
   html+='<div class="actionrow"><button id="export" class="primary">Export reading for students</button></div>';
   html+='</div>';
 
@@ -365,6 +375,14 @@ function exportReading(){
     levelDescription:'',
     paragraphs:paragraphs
   };
+  // Optional comprehension questions: one per line, blanks ignored, max four.
+  // If none remain, the field is omitted from the JSON entirely so existing
+  // readings and the student app's no-questions path are unaffected.
+  const qEl=$('export-questions');
+  if(qEl){
+    const questions=qEl.value.split(/\r?\n/).map(q=>q.trim()).filter(q=>q.length).slice(0,4);
+    if(questions.length) data.questions=questions;
+  }
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const safeName=title.replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim()||'reading';
