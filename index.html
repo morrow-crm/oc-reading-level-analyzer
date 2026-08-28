@@ -96,6 +96,17 @@
   button.secondary:hover{background:#dededf;}
   #status{font-size:0.84rem;color:var(--ink-soft);flex:1;min-width:120px;}
 
+  /* ---- export form ---- */
+  .exportform{display:grid;gap:12px;margin-top:6px;}
+  .exportform label{display:block;font-weight:600;font-size:0.86rem;margin-bottom:4px;}
+  .exportform label .hint{font-weight:400;color:var(--ink-soft);font-size:0.85rem;}
+  .exportform input[type=text]{
+    width:100%;background:#fff;border:1px solid var(--border-strong);border-radius:4px;
+    padding:8px 10px;font-family:inherit;font-size:0.95rem;color:var(--ink);
+  }
+  .exportform input[type=text]:focus{outline:2px solid var(--blue);outline-offset:-1px;}
+  .exportform textarea{min-height:96px;}
+
   /* ---- results ---- */
   #results[hidden]{display:none;}
   .reveal{opacity:0;animation:fade .4s ease forwards;}
@@ -340,8 +351,19 @@ function analyze(){
       +'Readability formulas are most reliable on samples of at least 100 words, and SMOG '
       +'is calibrated for 30 or more sentences. Treat these numbers as rough for short excerpts.</div>';
   }
-  html+='<div class="actionrow"><button id="export" class="primary">Export reading for students</button></div>';
   html+='</div>';
+
+  const suggestedTitle=(loadedFilename||'').replace(/\.[^.]+$/,'').replace(/"/g,'&quot;');
+  html+='<div class="section reveal" style="animation-delay:.12s">';
+  html+='<h2><span class="tri">▾</span> 3. Export for students <span class="hint">(saves a JSON file the student app opens)</span></h2>';
+  html+='<div class="exportform">';
+  html+='<div><label for="exportTitle">Reading title</label>'
+    +'<input type="text" id="exportTitle" value="'+suggestedTitle+'"></div>';
+  html+='<div><label for="exportQuestions">Comprehension questions '
+    +'<span class="hint">(optional; one per line; up to four)</span></label>'
+    +'<textarea id="exportQuestions" placeholder="Optional: one question per line, up to four."></textarea></div>';
+  html+='<div class="actionrow" style="margin-top:0"><button id="export" class="primary">Download JSON for students</button></div>';
+  html+='</div></div>';
 
   lastConsensus=con;
   lastText=text;
@@ -355,9 +377,21 @@ function analyze(){
 
 function exportReading(){
   if(lastConsensus===null) return;
-  const suggested=loadedFilename.replace(/\.[^.]+$/,'');
-  const title=(window.prompt('Title for this reading:',suggested)||'').trim();
-  if(!title){statusEl.textContent='Export cancelled — a title is required.';return;}
+  const titleEl=document.getElementById('exportTitle');
+  const questionsEl=document.getElementById('exportQuestions');
+  const title=(titleEl&&titleEl.value||'').trim();
+  if(!title){
+    statusEl.textContent='Export cancelled — a title is required.';
+    if(titleEl) titleEl.focus();
+    return;
+  }
+  const rawQ=(questionsEl&&questionsEl.value)||'';
+  const questions=rawQ.split(/\r?\n/).map(q=>q.trim()).filter(q=>q.length);
+  if(questions.length>4){
+    statusEl.textContent='Please limit comprehension questions to four (one per line).';
+    if(questionsEl) questionsEl.focus();
+    return;
+  }
   const paragraphs=lastText.split(/\n\s*\n+/).map(p=>p.replace(/\s+/g,' ').trim()).filter(p=>p.length);
   const data={
     title:title,
@@ -365,6 +399,7 @@ function exportReading(){
     levelDescription:'',
     paragraphs:paragraphs
   };
+  if(questions.length) data.questions=questions;
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const safeName=title.replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim()||'reading';
