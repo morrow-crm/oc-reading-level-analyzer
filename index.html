@@ -3,209 +3,195 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OC Reading Level Analyzer — web</title>
+<title>OC Reading Level Analyzer — Faculty</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
+  /* "Composition Notebook" — warm paper, ink, Fraunces display over Public Sans,
+     ink-blue accent, pencil-yellow highlight. Matches the student app. */
   :root{
-    --bg:#ffffff;
-    --panel:#f7f7f8;
-    --panel-blue:#eef2f7;
-    --border:#d4d4d8;
-    --border-strong:#b9b9bd;
-    --ink:#1f1f22;
-    --ink-soft:#6a6a6e;
-    --ink-faint:#8d8d92;
-    --blue:#2f6fb5;
-    --blue-dark:#245a93;
-    --navy:#243f63;
-    --yellow-bg:#faf3cd;
-    --yellow-bd:#e6d98f;
-    --yellow-ink:#6a5910;
+    --paper:#f6f1e7; --panel:#fdfaf2; --field:#fffefb; --ink:#23201b; --ink-soft:#645c48;
+    --rule:#ddd2b8; --rule-strong:#b7a985;
+    --accent:#30527a; --accent-strong:#26405f; --accent-fg:#fbf8f1;
+    --highlight:#e9b949; --highlight-ink:#3a2f00;
+    --warn-bg:#f7efd6; --warn-bd:#d9c88a; --warn-ink:#6a5910;
+    --code-bg:#eef3f8; --code-ink:#26405f;
+    --display:"Fraunces",Georgia,"Times New Roman",serif;
+    --body:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--ink);
-    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    font-size:15px;line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-    padding:30px 20px 70px;
-  }
-  .wrap{max-width:940px;margin:0 auto;}
-  .mono{
-    font-family:Consolas,"Cascadia Mono",Menlo,monospace;
-    font-size:0.86em;background:#ececec;color:#333;
-    padding:1px 5px;border-radius:3px;
-  }
+  body{background:var(--paper);color:var(--ink);font-family:var(--body);
+    font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:30px 20px 70px;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .mono{font-family:Consolas,"Cascadia Mono",Menlo,monospace;font-size:0.85em;background:var(--code-bg);color:var(--code-ink);padding:1px 5px;border-radius:3px;}
+  a{color:var(--accent);}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px;}
 
-  /* ---- header ---- */
-  header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:6px;}
-  h1{font-size:1.7rem;font-weight:700;letter-spacing:-0.01em;}
-  .sub{color:var(--ink-soft);font-size:0.92rem;margin-top:4px;max-width:60em;}
+  header{border-bottom:2px solid var(--rule);padding-bottom:16px;}
+  .eyebrow{font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--accent);font-weight:700;}
+  h1{font-family:var(--display);font-size:2.1rem;font-weight:600;letter-spacing:-0.01em;line-height:1.08;margin-top:4px;}
+  .sub{color:var(--ink-soft);font-size:0.98rem;margin-top:8px;max-width:62ch;}
 
-  /* ---- banners ---- */
-  .banner-navy{
-    background:var(--navy);color:#fff;font-weight:500;
-    padding:11px 16px;border-radius:4px;font-size:0.95rem;margin-top:18px;
-  }
-  .banner-yellow{
-    background:var(--yellow-bg);border:1px solid var(--yellow-bd);
-    color:var(--yellow-ink);padding:11px 16px;border-radius:4px;
-    font-size:0.95rem;margin-top:18px;
-  }
+  /* tabs */
+  .tabs{margin-top:22px;}
+  .tabs>input[type=radio]{position:absolute;opacity:0;pointer-events:none;}
+  .tablabels{display:flex;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--rule);}
+  .tablabels label{cursor:pointer;padding:10px 16px;font-size:0.9rem;font-weight:600;color:var(--ink-soft);
+    border:2px solid transparent;border-bottom:none;border-radius:7px 7px 0 0;margin-bottom:-2px;}
+  .tablabels label:hover{color:var(--ink);background:var(--panel);}
+  #t1:checked~.tablabels label[for=t1],
+  #t2:checked~.tablabels label[for=t2],
+  #t3:checked~.tablabels label[for=t3]{color:var(--accent);background:var(--panel);border-color:var(--rule);border-bottom:2px solid var(--panel);}
+  .panel-tab{display:none;background:var(--panel);border:2px solid var(--rule);border-top:none;border-radius:0 0 7px 7px;padding:22px 24px;border-left:3px solid var(--accent);}
+  #t1:checked~.panels #p1,#t2:checked~.panels #p2,#t3:checked~.panels #p3{display:block;}
 
-  /* ---- sections ---- */
-  .section{
-    border:1px solid var(--border);background:var(--panel);
-    border-radius:5px;padding:18px 20px;margin-top:18px;
-  }
-  .section h2{
-    font-size:1.05rem;font-weight:700;margin-bottom:14px;
-  }
-  .section h2 .tri{color:var(--ink-soft);font-size:0.8em;margin-right:4px;}
-  .section h2 .hint{
-    font-weight:400;color:var(--ink-soft);font-size:0.85rem;
-  }
+  h2{font-family:var(--display);font-size:1.4rem;font-weight:600;margin-bottom:8px;}
+  h2 .tri{color:var(--ink-soft);font-size:0.72em;margin-right:4px;}
+  h2 .hint{font-family:var(--body);font-weight:400;color:var(--ink-soft);font-size:0.85rem;}
+  .lead{color:var(--ink-soft);margin-bottom:14px;max-width:60ch;}
+  .subhead{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:20px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--rule);}
 
-  textarea{
-    width:100%;min-height:180px;resize:vertical;
-    background:#fff;border:1px solid var(--border-strong);border-radius:4px;
-    padding:12px 14px;
-    font-family:-apple-system,"Segoe UI",Roboto,sans-serif;
-    font-size:0.95rem;line-height:1.55;color:var(--ink);
-  }
-  textarea:focus{outline:2px solid var(--blue);outline-offset:-1px;}
+  textarea,input[type=text]{width:100%;background:var(--field);color:var(--ink);border:1px solid var(--rule-strong);border-radius:5px;padding:11px 13px;font-family:inherit;font-size:0.96rem;}
+  textarea{min-height:150px;resize:vertical;line-height:1.5;}
+  #exportQuestions{min-height:96px;}
+  label{display:block;font-weight:600;font-size:0.9rem;margin-bottom:5px;}
+  label .hint{font-weight:400;color:var(--ink-soft);font-size:0.85rem;}
+  .dropzone{margin-top:10px;border:1.5px dashed var(--rule-strong);background:var(--field);border-radius:5px;text-align:center;padding:16px;font-size:0.9rem;color:var(--ink-soft);cursor:pointer;}
+  .dropzone:hover,.dropzone.over{border-color:var(--accent);color:var(--accent);}
 
-  .dropzone{
-    margin-top:10px;border:1.5px dashed var(--border-strong);
-    background:#fff;border-radius:4px;text-align:center;
-    padding:14px;font-size:0.9rem;color:var(--ink-soft);cursor:pointer;
-    transition:background .12s,border-color .12s;
-  }
-  .dropzone:hover,.dropzone.over{background:var(--panel-blue);border-color:var(--blue);color:var(--ink);}
+  .actionrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:16px;}
+  button{font-family:var(--body);font-size:0.88rem;font-weight:600;cursor:pointer;border-radius:6px;padding:9px 17px;border:1.5px solid var(--accent);}
+  button.primary{background:var(--accent);color:var(--accent-fg);}
+  button.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong);}
+  button.secondary{background:transparent;color:var(--accent);}
+  button.secondary:hover{background:var(--field);}
+  #status{font-size:0.86rem;color:var(--ink-soft);flex:1;min-width:140px;}
 
-  .actionrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px;}
-  button{
-    font-family:inherit;font-size:0.86rem;cursor:pointer;
-    border-radius:4px;padding:8px 16px;transition:background .12s;
-  }
-  button.primary{background:var(--blue);color:#fff;border:1px solid var(--blue-dark);}
-  button.primary:hover{background:var(--blue-dark);}
-  button.secondary{background:#e9e9ea;color:var(--ink);border:1px solid #adadb2;}
-  button.secondary:hover{background:#dededf;}
-  #status{font-size:0.84rem;color:var(--ink-soft);flex:1;min-width:120px;}
+  .exportform{display:grid;gap:14px;margin-top:4px;}
+  .linkbox{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;}
+  .linkbox code{flex:1;min-width:0;background:var(--code-bg);border:1px solid var(--rule-strong);border-radius:5px;padding:10px 12px;font-family:Consolas,Menlo,monospace;font-size:0.84rem;color:var(--code-ink);overflow-x:auto;white-space:nowrap;}
+  .note{background:var(--field);border:1px solid var(--rule);border-left:3px solid var(--highlight);border-radius:5px;padding:12px 15px;font-size:0.9rem;margin-top:16px;}
+  .note .q{color:var(--ink-soft);}
 
-  /* ---- export form ---- */
-  .exportform{display:grid;gap:12px;margin-top:6px;}
-  .exportform label{display:block;font-weight:600;font-size:0.86rem;margin-bottom:4px;}
-  .exportform label .hint{font-weight:400;color:var(--ink-soft);font-size:0.85rem;}
-  .exportform input[type=text]{
-    width:100%;background:#fff;border:1px solid var(--border-strong);border-radius:4px;
-    padding:8px 10px;font-family:inherit;font-size:0.95rem;color:var(--ink);
-  }
-  .exportform input[type=text]:focus{outline:2px solid var(--blue);outline-offset:-1px;}
-  .exportform textarea{min-height:96px;}
-
-  /* ---- results ---- */
+  /* results (injected by analyze) */
   #results[hidden]{display:none;}
   .reveal{opacity:0;animation:fade .4s ease forwards;}
   @keyframes fade{to{opacity:1;}}
-
-  .headline-panel{
-    background:var(--panel-blue);border:1px solid #cdd7e3;border-radius:5px;
-    padding:22px 18px;text-align:center;
-  }
-  .headline-label{
-    font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;
-    color:var(--ink-soft);font-weight:600;
-  }
-  .headline-num{
-    font-size:3.4rem;font-weight:700;line-height:1.05;
-    color:var(--blue);margin:4px 0 2px;
-  }
-  .headline-band{font-size:1.12rem;font-weight:600;color:var(--ink);}
-  .headline-range{
-    font-family:Consolas,Menlo,monospace;font-size:0.78rem;
-    color:var(--ink-soft);margin-top:8px;
-  }
-
-  .subhead{
-    font-weight:700;font-size:0.95rem;margin:22px 0 8px;
-    padding-bottom:5px;border-bottom:1px solid var(--border);
-  }
-  table.data{width:100%;border-collapse:collapse;border:1px solid var(--border);}
-  table.data th{
-    background:#ececef;text-align:left;font-weight:600;
-    font-size:0.78rem;letter-spacing:0.02em;text-transform:uppercase;
-    color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--border);
-  }
-  table.data td{
-    padding:9px 10px;border-bottom:1px solid #e6e6e9;font-size:0.92rem;
-    vertical-align:baseline;
-  }
+  .banner-navy{background:var(--accent);color:var(--accent-fg);font-weight:500;padding:11px 16px;border-radius:5px;font-size:0.95rem;margin-top:4px;}
+  .banner-yellow{background:var(--warn-bg);border:1px solid var(--warn-bd);color:var(--warn-ink);padding:11px 16px;border-radius:5px;font-size:0.93rem;margin-top:18px;}
+  .section.reveal{margin-top:18px;}
+  .headline-panel{background:var(--field);border:1px solid var(--rule);border-radius:6px;padding:22px 18px;text-align:center;}
+  .headline-label{font-size:0.72rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;}
+  .headline-num{font-family:var(--display);font-size:3.2rem;font-weight:600;line-height:1.05;color:var(--accent);margin:4px 0 2px;}
+  .headline-band{font-size:1.1rem;font-weight:600;color:var(--ink);}
+  .headline-range{font-family:Consolas,Menlo,monospace;font-size:0.78rem;color:var(--ink-soft);margin-top:8px;}
+  table.data{width:100%;border-collapse:collapse;border:1px solid var(--rule);margin-top:4px;}
+  table.data th{background:var(--paper);text-align:left;font-weight:700;font-size:0.76rem;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--rule);}
+  table.data td{padding:9px 10px;border-bottom:1px solid var(--rule);font-size:0.92rem;vertical-align:baseline;}
   table.data tr:last-child td{border-bottom:none;}
-  .r{text-align:right;}
-  td.fn{font-weight:600;white-space:nowrap;}
-  td.fd{color:var(--ink-soft);font-size:0.86rem;}
-  td.score{
-    font-family:Consolas,Menlo,monospace;font-weight:600;
-    color:var(--blue);white-space:nowrap;
-  }
+  .r{text-align:right;} td.fn{font-weight:600;white-space:nowrap;} td.fd{color:var(--ink-soft);font-size:0.86rem;}
+  td.score{font-family:Consolas,Menlo,monospace;font-weight:600;color:var(--accent);white-space:nowrap;}
   td.fb{color:var(--ink-soft);white-space:nowrap;font-size:0.88rem;}
-
-  .statgrid{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
-    border:1px solid var(--border);border-radius:4px;overflow:hidden;
-  }
-  .stat{
-    padding:12px 10px;text-align:center;background:#fff;
-    border-right:1px solid #e6e6e9;
-  }
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));border:1px solid var(--rule);border-radius:5px;overflow:hidden;}
+  .stat{padding:12px 10px;text-align:center;background:var(--field);border-right:1px solid var(--rule);}
   .stat:last-child{border-right:none;}
-  .snum{
-    font-family:Consolas,Menlo,monospace;font-weight:600;
-    font-size:1.3rem;color:var(--ink);
-  }
-  .scap{
-    font-size:0.66rem;letter-spacing:0.04em;text-transform:uppercase;
-    color:var(--ink-soft);margin-top:3px;
-  }
+  .snum{font-family:Consolas,Menlo,monospace;font-weight:600;font-size:1.3rem;color:var(--ink);}
+  .scap{font-size:0.66rem;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-soft);margin-top:3px;}
 
-  /* ---- footer ---- */
-  footer{
-    margin-top:30px;border-top:1px solid var(--border);
-    padding-top:14px;font-size:0.83rem;color:var(--ink-soft);
-  }
-  footer a{color:var(--blue);}
-  footer .links{margin-bottom:8px;}
-  footer .links a{margin-right:14px;}
+  /* what students do */
+  ol.flow{margin:8px 0 0;padding-left:22px;} ol.flow li{margin:9px 0;} ol.flow li::marker{color:var(--accent);font-weight:700;}
+  .chips{margin-top:14px;display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{background:var(--highlight);color:var(--highlight-ink);border-radius:999px;padding:3px 12px;font-size:0.8rem;font-weight:700;}
+
+  footer{margin-top:30px;border-top:2px solid var(--rule);padding-top:14px;font-size:0.84rem;color:var(--ink-soft);}
+  footer .links{margin-bottom:8px;} footer .links a{margin-right:14px;}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header>
-    <h1>OC Reading Level Analyzer — web</h1>
-    <p class="sub">Local browser variant. Paste or upload a reading to estimate its level across eight readability formulas. All analysis runs in your browser — nothing is uploaded or stored. Phase one of the reading fluency tool.</p>
+    <div class="eyebrow">OC Reading Fluency</div>
+    <h1>Faculty Tools</h1>
+    <p class="sub">Build the readings your students read aloud: estimate a passage's reading level, attach comprehension questions, and create a one-click Canvas link that opens the reading in the student app — no files for students to download or upload.</p>
   </header>
 
-  <div class="banner-yellow" id="emptyBanner">No reading analyzed yet. Paste a passage or upload a file below to estimate its reading level.</div>
+  <div class="tabs">
+    <input type="radio" name="tab" id="t1" checked>
+    <input type="radio" name="tab" id="t2">
+    <input type="radio" name="tab" id="t3">
 
-  <section class="section">
-    <h2><span class="tri">▾</span> 1. Add a reading <span class="hint">(paste the text below, or upload a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span> file)</span></h2>
-    <textarea id="text" placeholder="Paste the text of a reading here…"></textarea>
-    <div class="dropzone" id="drop">Drop a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span> file here, or click to browse</div>
-    <input type="file" id="file" accept=".txt,.docx,.pdf" hidden>
-    <div class="actionrow">
-      <button id="analyze" class="primary">Analyze reading</button>
-      <button id="sample" class="secondary">Load sample</button>
-      <button id="clear" class="secondary">Clear</button>
-      <span id="status"></span>
+    <div class="tablabels">
+      <label for="t1" tabindex="0">1 &middot; Analyze a reading</label>
+      <label for="t2" tabindex="0">2 &middot; Create a student link</label>
+      <label for="t3" tabindex="0">3 &middot; What students do</label>
     </div>
-  </section>
 
-  <section id="results" hidden></section>
+    <div class="panels">
+
+      <!-- TAB 1 -->
+      <section class="panel-tab" id="p1">
+        <h2><span class="tri">▾</span> Add a reading <span class="hint">(paste below, or upload a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span>)</span></h2>
+        <div class="banner-yellow" id="emptyBanner" style="margin-top:0">No reading analyzed yet. Paste a passage or upload a file to estimate its reading level.</div>
+        <textarea id="text" placeholder="Paste the text of a reading here…" style="margin-top:14px;"></textarea>
+        <div class="dropzone" id="drop">Drop a <span class="mono">.txt</span>, <span class="mono">.docx</span>, or <span class="mono">.pdf</span> here, or click to browse</div>
+        <input type="file" id="file" accept=".txt,.docx,.pdf" hidden>
+        <div class="actionrow">
+          <button id="analyze" class="primary">Analyze reading</button>
+          <button id="sample" class="secondary">Load sample</button>
+          <button id="clear" class="secondary">Clear</button>
+          <span id="status"></span>
+        </div>
+        <section id="results" hidden style="margin-top:18px;"></section>
+      </section>
+
+      <!-- TAB 2 -->
+      <section class="panel-tab" id="p2">
+        <h2><span class="tri">▾</span> Create a student link</h2>
+        <p class="lead">Give the reading a title and up to four comprehension questions, then create the Canvas link. Students who open it get the reading and these questions directly — no file to hand out.</p>
+        <div class="note" id="needanalyze"><strong>Analyze a reading first.</strong> Go to the <em>Analyze a reading</em> tab, paste or upload the passage, and click Analyze reading. Then come back here.</div>
+        <div class="exportform">
+          <div><label for="exportTitle">Reading title</label>
+            <input type="text" id="exportTitle" placeholder="e.g., Alexie, Superman and Me"></div>
+          <div><label for="exportQuestions">Comprehension questions <span class="hint">(optional; one per line; up to four)</span></label>
+            <textarea id="exportQuestions" placeholder="One question per line, up to four."></textarea></div>
+          <div class="actionrow" style="margin-top:0">
+            <button id="makeLink" class="primary">Create assignment link</button>
+            <button id="export" class="secondary">Download reading file (.json)</button>
+            <span id="exportstatus" style="font-size:0.86rem;color:var(--ink-soft);flex:1;min-width:140px;"></span>
+          </div>
+        </div>
+        <div id="linkout" hidden>
+          <div class="subhead">Your Canvas link</div>
+          <div class="linkbox"><code id="linkcode"></code><button id="copyLink" class="secondary">Copy</button></div>
+          <div class="note">Paste this into the Canvas assignment. Students click it and the reading opens straight into the app.<br><span class="q">Setup note: the reading file is published to the app's library the first time its link is made; after that the link just works. Use <strong>Download reading file</strong> above to get the file to publish.</span></div>
+        </div>
+      </section>
+
+      <!-- TAB 3 -->
+      <section class="panel-tab" id="p3">
+        <h2><span class="tri">▾</span> What the app does for students</h2>
+        <p class="lead">When a student opens the assignment link, the app walks them through the whole activity in the browser. Nothing they do leaves their device until they download and submit their files.</p>
+        <ol class="flow">
+          <li><strong>Opens the reading</strong> from your link — no download or file upload.</li>
+          <li><strong>Microphone check</strong>, then <strong>reads the passage aloud</strong> while the app records their voice and times them. A clear "you are being recorded" notice shows, and they can <strong>pause and resume</strong>.</li>
+          <li><strong>Marks new vocabulary</strong> by tapping words (with dictionary lookup) and can turn them into flashcards.</li>
+          <li><strong>Comprehension check</strong> — answers your questions — then three short <strong>reflection</strong> questions.</li>
+          <li><strong>Downloads two files to submit:</strong> the audio recording and a PDF reading record (annotated reading, answers, time, words-per-minute, and any pauses).</li>
+        </ol>
+        <div class="chips">
+          <span class="chip">Reads aloud + recorded</span>
+          <span class="chip">Timed / words-per-minute</span>
+          <span class="chip">Vocabulary + flashcards</span>
+          <span class="chip">Comprehension &amp; reflection</span>
+          <span class="chip">Audio + PDF to submit</span>
+        </div>
+        <div class="note">Privacy: the student app runs entirely in the browser. Their recording and answers stay on their device until they download and submit them in Canvas.</div>
+      </section>
+
+    </div>
+  </div>
 
   <footer>
     <div class="links">
@@ -221,6 +207,7 @@
 if(window.pdfjsLib){
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 }
+const LINK_BASE='https://morrow-crm.github.io/oc-reading-fluency-student/';
 
 const $=id=>document.getElementById(id);
 const textEl=$('text'), statusEl=$('status'), resultsEl=$('results'), emptyEl=$('emptyBanner');
@@ -316,7 +303,7 @@ function analyze(){
     +'. Consensus reading level: grade '+con.toFixed(1)+'.</div>';
 
   html+='<div class="section reveal" style="animation-delay:.06s">';
-  html+='<h2><span class="tri">▾</span> 2. Reading level <span class="hint">(estimated from eight readability formulas)</span></h2>';
+  html+='<h2><span class="tri">▾</span> Reading level <span class="hint">(estimated from eight readability formulas)</span></h2>';
 
   html+='<div class="headline-panel">'
     +'<div class="headline-label">Consensus reading level</div>'
@@ -353,64 +340,73 @@ function analyze(){
   }
   html+='</div>';
 
-  const suggestedTitle=(loadedFilename||'').replace(/\.[^.]+$/,'').replace(/"/g,'&quot;');
-  html+='<div class="section reveal" style="animation-delay:.12s">';
-  html+='<h2><span class="tri">▾</span> 3. Export for students <span class="hint">(saves a JSON file the student app opens)</span></h2>';
-  html+='<div class="exportform">';
-  html+='<div><label for="exportTitle">Reading title</label>'
-    +'<input type="text" id="exportTitle" value="'+suggestedTitle+'"></div>';
-  html+='<div><label for="exportQuestions">Comprehension questions '
-    +'<span class="hint">(optional; one per line; up to four)</span></label>'
-    +'<textarea id="exportQuestions" placeholder="Optional: one question per line, up to four."></textarea></div>';
-  html+='<div class="actionrow" style="margin-top:0"><button id="export" class="primary">Download JSON for students</button></div>';
-  html+='</div></div>';
-
   lastConsensus=con;
   lastText=text;
   resultsEl.innerHTML=html;
   resultsEl.hidden=false;
   emptyEl.hidden=true;
-  statusEl.textContent='Analyzed '+W.toLocaleString()+' words.';
-  $('export').addEventListener('click',exportReading);
+  statusEl.textContent='Analyzed '+W.toLocaleString()+' words. Next: the "Create a student link" tab.';
+  onAnalyzed();
   resultsEl.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function exportReading(){
-  if(lastConsensus===null) return;
-  const titleEl=document.getElementById('exportTitle');
-  const questionsEl=document.getElementById('exportQuestions');
-  const title=(titleEl&&titleEl.value||'').trim();
-  if(!title){
-    statusEl.textContent='Export cancelled — a title is required.';
-    if(titleEl) titleEl.focus();
-    return;
-  }
-  const rawQ=(questionsEl&&questionsEl.value)||'';
-  const questions=rawQ.split(/\r?\n/).map(q=>q.trim()).filter(q=>q.length);
-  if(questions.length>4){
-    statusEl.textContent='Please limit comprehension questions to four (one per line).';
-    if(questionsEl) questionsEl.focus();
-    return;
-  }
+/* Enable the Create-a-link tab once a reading is analyzed. */
+function onAnalyzed(){
+  const t=$('exportTitle');
+  if(t && !t.value.trim() && loadedFilename){ t.value=loadedFilename.replace(/\.[^.]+$/,''); }
+  $('needanalyze').hidden=true;
+}
+
+function stat(n,cap){
+  return '<div class="stat"><div class="snum">'+n+'</div><div class="scap">'+cap+'</div></div>';
+}
+
+/* ---------- Tab 2: create a student link / download the reading file ---------- */
+function slugify(s){
+  return s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+}
+function collectReading(){
+  if(lastConsensus===null){ $('exportstatus').textContent='Analyze a reading first (tab 1).'; return null; }
+  const title=($('exportTitle').value||'').trim();
+  if(!title){ $('exportstatus').textContent='A title is required.'; $('exportTitle').focus(); return null; }
+  const questions=($('exportQuestions').value||'').split(/\r?\n/).map(q=>q.trim()).filter(q=>q.length);
+  if(questions.length>4){ $('exportstatus').textContent='Please limit comprehension questions to four (one per line).'; $('exportQuestions').focus(); return null; }
   const paragraphs=lastText.split(/\n\s*\n+/).map(p=>p.replace(/\s+/g,' ').trim()).filter(p=>p.length);
-  const data={
-    title:title,
-    readingLevel:lastConsensus.toFixed(1),
-    levelDescription:'',
-    paragraphs:paragraphs
-  };
+  const data={title:title, readingLevel:lastConsensus.toFixed(1), levelDescription:'', paragraphs:paragraphs};
   if(questions.length) data.questions=questions;
+  return data;
+}
+function makeLink(){
+  const data=collectReading(); if(!data) return;
+  const slug=slugify(data.title)||'reading';
+  const link=LINK_BASE+'?reading='+slug;
+  $('linkcode').textContent=link;
+  $('linkout').hidden=false;
+  $('exportstatus').textContent='Link created for "'+slug+'".';
+  $('linkout').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function exportReading(){
+  const data=collectReading(); if(!data) return;
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const safeName=title.replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim()||'reading';
+  const safeName=slugify(data.title)||'reading';
   const a=document.createElement('a');
   a.href=url; a.download=safeName+'.json';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),0);
-  statusEl.textContent='Exported '+safeName+'.json';
+  $('exportstatus').textContent='Downloaded '+safeName+'.json — publish it to the app’s readings/ folder.';
 }
-function stat(n,cap){
-  return '<div class="stat"><div class="snum">'+n+'</div><div class="scap">'+cap+'</div></div>';
+function copyLink(){
+  const link=$('linkcode').textContent;
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(link).then(()=>{$('exportstatus').textContent='Link copied.';})
+      .catch(()=>selectCode());
+  } else { selectCode(); }
+}
+function selectCode(){
+  const el=$('linkcode'); const r=document.createRange(); r.selectNodeContents(el);
+  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  $('exportstatus').textContent='Press Ctrl/Cmd+C to copy the selected link.';
 }
 
 /* ---------- file handling ---------- */
@@ -451,8 +447,14 @@ async function readFile(file){
 $('analyze').addEventListener('click',analyze);
 $('clear').addEventListener('click',()=>{
   textEl.value='';resultsEl.hidden=true;emptyEl.hidden=false;
-  statusEl.textContent='';loadedFilename='';lastConsensus=null;lastText='';textEl.focus();
+  statusEl.textContent='';loadedFilename='';lastConsensus=null;lastText='';
+  $('needanalyze').hidden=false;$('linkout').hidden=true;$('exportstatus').textContent='';
+  textEl.focus();
 });
+$('makeLink').addEventListener('click',makeLink);
+$('export').addEventListener('click',exportReading);
+$('copyLink').addEventListener('click',copyLink);
+
 const SAMPLES=[
   {title:"The Wonderful Wizard of Oz — L. Frank Baum",paragraphs:[
     "Dorothy lived in the midst of the great Kansas prairies, with Uncle Henry, who was a farmer, and Aunt Em, who was the farmer's wife. Their house was small, for the lumber to build it had to be carried by wagon many miles. There were four walls, a floor and a roof, which made one room; and this room contained a rusty looking cookstove, a cupboard for the dishes, a table, three or four chairs, and the beds. Uncle Henry and Aunt Em had a big bed in one corner, and Dorothy a little bed in another corner. There was no garret at all, and no cellar—except a small hole dug in the ground, called a cyclone cellar, where the family could go in case one of those great whirlwinds arose, mighty enough to crush any building in its path. It was reached by a trap door in the middle of the floor, from which a ladder led down into the small, dark hole.",
@@ -483,15 +485,15 @@ const SAMPLES=[
   ]},
   {title:"Frankenstein — Mary Shelley",paragraphs:[
     "I am by birth a Genevese, and my family is one of the most distinguished of that republic. My ancestors had been for many years counsellors and syndics, and my father had filled several public situations with honour and reputation. He was respected by all who knew him for his integrity and indefatigable attention to public business. He passed his younger days perpetually occupied by the affairs of his country; a variety of circumstances had prevented his marrying early, nor was it until the decline of life that he became a husband and the father of a family.",
-    "As the circumstances of his marriage illustrate his character, I cannot refrain from relating them. One of his most intimate friends was a merchant who, from a flourishing state, fell, through numerous mischances, into poverty. This man, whose name was Beaufort, was of a proud and unbending disposition and could not bear to live in poverty and oblivion in the same country where he had formerly been distinguished for his rank and magnificence. Having paid his debts, therefore, in the most honourable manner, he retreated with his daughter to the town of Lucerne, where he lived unknown and in wretchedness. My father loved Beaufort with the truest friendship and was deeply grieved by his retreat in these unfortunate circumstances. He bitterly deplored the false pride which led his friend to a conduct so little worthy of the affection that united them. He lost no time in endeavouring to seek him out, with the hope of persuading him to begin the world again through his credit and assistance.",
-    "Beaufort had taken effectual measures to conceal himself, and it was ten months before my father discovered his abode. Overjoyed at this discovery, he hastened to the house, which was situated in a mean street near the Reuss. But when he entered, misery and despair alone welcomed him. Beaufort had saved but a very small sum of money from the wreck of his fortunes, but it was sufficient to provide him with sustenance for some months, and in the meantime he hoped to procure some respectable employment in a merchant's house. The interval was, consequently, spent in inaction; his grief only became more deep and rankling when he had leisure for reflection, and at length it took so fast hold of his mind that at the end of three months he lay on a bed of sickness, incapable of any exertion.",
+    "As the circumstances of his marriage illustrate his character, I cannot refrain from relating them. One of his most intimate friends was a merchant who, from a flourishing state, fell, through numerous mischances, into poverty. This man, whose name was Beaufort, was of a proud and unbending disposition and could not bear to live in poverty and oblivion in the same country where he had formerly been distinguished for his rank and magnificence. Having paid his debts, therefore, in the most honourable manner, he retreated with his daughter to the town of Lucerne, where he lived unknown and in wretchedness. My father loved Beaufort with the truest friendship and was deeply grieved by his retreat in these unfortunate circumstances.",
+    "Beaufort had taken effectual measures to conceal himself, and it was ten months before my father discovered his abode. Overjoyed at this discovery, he hastened to the house, which was situated in a mean street near the Reuss. But when he entered, misery and despair alone welcomed him. Beaufort had saved but a very small sum of money from the wreck of his fortunes, but it was sufficient to provide him with sustenance for some months, and in the meantime he hoped to procure some respectable employment in a merchant's house.",
     "His daughter attended him with the greatest tenderness, but she saw with despair that their little fund was rapidly decreasing and that there was no other prospect of support. But Caroline Beaufort possessed a mind of an uncommon mould, and her courage rose to support her in her adversity. She procured plain work; she plaited straw and by various means contrived to earn a pittance scarcely sufficient to support life."
   ]},
   {title:"On the Origin of Species — Charles Darwin",paragraphs:[
-    "When on board H.M.S. Beagle, as naturalist, I was much struck with certain facts in the distribution of the inhabitants of South America, and in the geological relations of the present to the past inhabitants of that continent. These facts seemed to me to throw some light on the origin of species—that mystery of mysteries, as it has been called by one of our greatest philosophers. On my return home, it occurred to me, in 1837, that something might perhaps be made out on this question by patiently accumulating and reflecting on all sorts of facts which could possibly have any bearing on it. After five years' work I allowed myself to speculate on the subject, and drew up some short notes; these I enlarged in 1844 into a sketch of the conclusions, which then seemed to me probable: from that period to the present day I have steadily pursued the same object. I hope that I may be excused for entering on these personal details, as I give them to show that I have not been hasty in coming to a decision.",
-    "This Abstract, which I now publish, must necessarily be imperfect. I cannot here give references and authorities for my several statements; and I must trust to the reader reposing some confidence in my accuracy. No doubt errors will have crept in, though I hope I have always been cautious in trusting to good authorities alone. I can here give only the general conclusions at which I have arrived, with a few facts in illustration, but which, I hope, in most cases will suffice. No one can feel more sensible than I do of the necessity of hereafter publishing in detail all the facts, with references, on which my conclusions have been grounded; and I hope in a future work to do this.",
+    "When on board H.M.S. Beagle, as naturalist, I was much struck with certain facts in the distribution of the inhabitants of South America, and in the geological relations of the present to the past inhabitants of that continent. These facts seemed to me to throw some light on the origin of species—that mystery of mysteries, as it has been called by one of our greatest philosophers. On my return home, it occurred to me, in 1837, that something might perhaps be made out on this question by patiently accumulating and reflecting on all sorts of facts which could possibly have any bearing on it.",
+    "This Abstract, which I now publish, must necessarily be imperfect. I cannot here give references and authorities for my several statements; and I must trust to the reader reposing some confidence in my accuracy. No doubt errors will have crept in, though I hope I have always been cautious in trusting to good authorities alone. I can here give only the general conclusions at which I have arrived, with a few facts in illustration, but which, I hope, in most cases will suffice.",
     "In considering the Origin of Species, it is quite conceivable that a naturalist, reflecting on the mutual affinities of organic beings, on their embryological relations, their geographical distribution, geological succession, and other such facts, might come to the conclusion that each species had not been independently created, but had descended, like varieties, from other species. Nevertheless, such a conclusion, even if well founded, would be unsatisfactory, until it could be shown how the innumerable species inhabiting this world have been modified, so as to acquire that perfection of structure and coadaptation which most justly excites our admiration.",
-    "Naturalists continually refer to external conditions, such as climate, food, and so on, as the only possible cause of variation. In one very limited sense, as we shall hereafter see, this may be true; but it is preposterous to attribute to mere external conditions, the structure, for instance, of the woodpecker, with its feet, tail, beak, and tongue, so admirably adapted to catch insects under the bark of trees. In the case of the misseltoe, which draws its nourishment from certain trees, which has seeds that must be transported by certain birds, and which has flowers with separate sexes absolutely requiring the agency of certain insects to bring pollen from one flower to the other, it is equally preposterous to account for the structure of this parasite, with its relations to several distinct organic beings, by the effects of external conditions, or of habit, or of the volition of the plant itself."
+    "Naturalists continually refer to external conditions, such as climate, food, and so on, as the only possible cause of variation. In one very limited sense, as we shall hereafter see, this may be true; but it is preposterous to attribute to mere external conditions, the structure, for instance, of the woodpecker, with its feet, tail, beak, and tongue, so admirably adapted to catch insects under the bark of trees."
   ]}
 ];
 let sampleIndex=0;
